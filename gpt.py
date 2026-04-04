@@ -497,7 +497,7 @@ def luckmail_create_order(email: str, proxies: Any = None) -> tuple:
                                 proxies=proxies,
                                 project_code="openai",
                                 email_type="ms_graph",
-                                domain="outlook.com",
+                                domain="hotmail.com",
                                 specified_email="",
                                 variant_mode="")
     if data.get("code") == 0:
