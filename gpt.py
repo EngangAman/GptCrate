@@ -208,11 +208,20 @@ def _skip_net_check() -> bool:
 
 def _prefetch_active_emails(rotator: ProxyRotator, min_pool_size: int = 10, batch_size: int = 20):
     """后台线程：预检测邮箱池补充
-    当活跃邮箱数量低于 min_pool_size 时，批量购买并检测
+    当活跃邮箱数量低于 min_pool_size 时，优先检查已购邮箱，不足时批量购买
     """
     global _active_email_queue, _prefetch_no_stock
     if _active_email_queue is None:
         _active_email_queue = ActiveEmailQueue()
+
+    # 首先检查已购邮箱
+    print(f"\n[*] [预检测] 首先检查已购邮箱...")
+    proxy = rotator.next() if len(rotator) > 0 else None
+    proxies = {"http": proxy, "https": proxy} if proxy else None
+    purchased_active = luckmail_check_purchased_emails(proxies=proxies, max_workers=5)
+    if purchased_active:
+        _active_email_queue.add_batch(purchased_active)
+        print(f"[*] [预检测] ✓ 已从已购邮箱中添加 {len(purchased_active)} 个活跃邮箱 | 队列: {len(_active_email_queue)} 个")
 
     while True:
         try:
@@ -839,18 +848,80 @@ def luckmail_batch_buy_and_check(quantity: int = 10, max_workers: int = 5, proxi
     return active_emails, None
 
 
-def luckmail_get_purchased_email_by_tag(tag: str = "", proxies: Any = None) -> tuple:
-    """按标签获取已购邮箱（用于获取待检测的邮箱）"""
-    data = _luckmail_api_request("POST", "email/purchases/api-get",
-                                proxies=proxies,
-                                tag=tag,
-                                page=1,
-                                per_page=10,
-                                email_type="hotmail")
-    if data.get("code") == 0:
-        mails = data.get("data", {}).get("list", [])
-        return mails, None
-    return [], data.get("message", "获取已购邮箱失败")
+def luckmail_get_purchased_emails(proxies: Any = None, page: int = 1, page_size: int = 50, user_disabled: int = 0) -> tuple:
+    """获取已购邮箱列表
+    user_disabled: 0=正常(非禁用), 1=已禁用
+    返回: (邮箱列表, 错误信息)
+    """
+    try:
+        headers = {"X-API-Key": LUCKMAIL_API_KEY, "Content-Type": "application/json"}
+        url = f"{LUCKMAIL_API_URL}/email/purchases"
+        params = {
+            "page": page,
+            "page_size": page_size,
+            "user_disabled": user_disabled
+        }
+        response = requests.get(url, headers=headers, params=params, proxies=proxies, timeout=15)
+        data = response.json()
+
+        if data.get("code") == 0:
+            mails = data.get("data", {}).get("list", [])
+            return mails, None
+        return [], data.get("message", "获取已购邮箱失败")
+    except Exception as e:
+        return [], f"获取已购邮箱异常: {e}"
+
+
+def luckmail_check_purchased_emails(proxies: Any = None, max_workers: int = 5) -> list:
+    """检查已购邮箱活跃度，返回活跃邮箱列表
+    只检查非禁用的邮箱，不活跃的自动禁用
+    """
+    print(f"[*] 获取已购邮箱列表...")
+    mails, err = luckmail_get_purchased_emails(proxies=proxies, user_disabled=0)
+    if err:
+        print(f"[Error] 获取已购邮箱失败: {err}")
+        return []
+
+    if not mails:
+        print(f"[*] 没有已购的非禁用邮箱")
+        return []
+
+    print(f"[*] 获取到 {len(mails)} 个已购邮箱，开始检测活跃度...")
+
+    active_emails = []
+    disabled_count = 0
+    lock = threading.Lock()
+
+    def check_single_email(mail):
+        nonlocal disabled_count
+        email = mail.get("email_address")
+        token = mail.get("token")
+        pid = mail.get("id")
+
+        if not email or not token:
+            return None
+
+        is_alive, msg = luckmail_check_email_alive(token, proxies)
+
+        if is_alive:
+            return {"email": email, "token": token, "id": pid}
+        else:
+            # 禁用不活跃的邮箱
+            if luckmail_disable_email(pid, disabled=True, proxies=proxies):
+                with lock:
+                    disabled_count += 1
+            return None
+
+    # 使用线程池并行检测
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(check_single_email, m): m for m in mails}
+        for future in concurrent.futures.as_completed(futures):
+            result = future.result()
+            if result:
+                active_emails.append(result)
+
+    print(f"[*] 已购邮箱检测完成: ✓活跃 {len(active_emails)}/{len(mails)} 个, 已禁用 {disabled_count} 个不活跃邮箱")
+    return active_emails
 
 
 def luckmail_create_order(email: str, proxies: Any = None) -> tuple:

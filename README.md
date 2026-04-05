@@ -135,6 +135,8 @@ EMAIL_MODE=luckmail
 LUCKMAIL_API_URL=https://mails.luckyous.com/api/v1/openapi
 LUCKMAIL_API_KEY=你的API密钥
 
+# 邮箱类型: ms_imap (IMAP协议) 或 ms_graph (Microsoft Graph API)
+LUCKMAIL_EMAIL_TYPE=ms_imap
 # 自动购买邮箱并检测活跃度（推荐开启）
 LUCKMAIL_AUTO_BUY=true
 # 邮箱不活跃时的最大重试次数
@@ -145,17 +147,29 @@ LUCKMAIL_MAX_RETRY=3
 
 1. **预检测模式** (`LUCKMAIL_AUTO_BUY=true`)：
    - 启动时自动创建后台线程
-   - 批量购买邮箱（默认20个）
+   - **优先检查已购邮箱**：获取用户已购买的非禁用邮箱，检测活跃度后加入号池
+   - 批量购买新邮箱（默认20个）补充号池
    - **并行检测活跃度**（5线程并发）
    - **只保留活跃邮箱**到队列
    - **自动禁用不活跃邮箱**
    - 注册时直接从队列取活跃邮箱使用
    - 队列不足时自动补充
 
-2. **接码模式** (`LUCKMAIL_AUTO_BUY=false`)：
+2. **实时购买模式** (`LUCKMAIL_AUTO_BUY=true`，跳过预检测)：
+   - 注册时实时购买邮箱
+   - 购买后立即检测活跃度
+   - 不活跃则禁用并重新购买
+
+3. **接码模式** (`LUCKMAIL_AUTO_BUY=false`)：
    - 每次注册时创建接码订单
    - 平台自动分配临时邮箱
    - 适合快速测试
+
+4. **已购邮箱模式**（推荐已有大量邮箱的用户）：
+   - 只使用用户已购买的邮箱
+   - 启动时批量检测已购邮箱活跃度
+   - 活跃的加入号池，不活跃的自动禁用
+   - 号池不足时可选择是否购买新邮箱
 
 ### 代理配置
 

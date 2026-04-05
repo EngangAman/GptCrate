@@ -34,18 +34,21 @@ def select_luckmail_mode():
     print("  1. 预检测模式 - 批量购买并检测活跃度 (推荐，需确保有库存)")
     print("  2. 实时购买模式 - 注册时实时购买并检测")
     print("  3. 接码模式 - 使用平台临时邮箱接收验证码")
+    print("  4. 已购邮箱模式 - 使用已购买的邮箱，检测活跃度后使用")
     print()
 
     while True:
-        choice = input("请输入选项 (1/2/3): ").strip()
+        choice = input("请输入选项 (1/2/3/4): ").strip()
         if choice == "1":
             return "prefetch"
         elif choice == "2":
             return "realtime"
         elif choice == "3":
             return "order"
+        elif choice == "4":
+            return "purchased"
         else:
-            print("无效选项，请输入 1、2 或 3")
+            print("无效选项，请输入 1、2、3 或 4")
 
 def select_email_type():
     print("\n请选择邮箱类型:")
@@ -148,6 +151,8 @@ ACCOUNTS_FILE=accounts.txt
             auto_buy = "true"
         elif luckmail_mode == "realtime":
             auto_buy = "true"
+        elif luckmail_mode == "purchased":
+            auto_buy = "true"  # 已购邮箱模式也启用自动购买逻辑
         else:  # order 模式
             auto_buy = "false"
 
