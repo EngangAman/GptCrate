@@ -18,7 +18,8 @@
 
 - 注册地址：https://mails.luckyous.com/EC36F88F
 - 只需填写 API Key，其他配置代码已帮你搞定！
-- 自动获取邮箱、自动接收验证码、全自动注册
+- **智能预检测**：自动购买邮箱并检测活跃度，只使用活跃邮箱注册
+- **自动禁用**：不活跃邮箱自动禁用，避免浪费
 
 最小配置：
 
@@ -88,6 +89,7 @@ pip install curl_cffi
 | 文件          | 作用                              |
 | ------------- | --------------------------------- |
 | `gpt.py`      | 主程序                            |
+| `start.py`    | 一键启动器（带交互式配置）        |
 | `.env`        | 配置文件 (邮箱、代理、输出路径等) |
 | `proxies.txt` | 代理列表文件 (每行一个代理)       |
 
@@ -103,7 +105,7 @@ pip install curl_cffi
 | ----------------- | ------------ | ------------------------------------------------------------------------------------------- |
 | Cloudflare Worker | `cf`         | 使用自有域名随机生成邮箱，需配置 `MAIL_DOMAIN` / `MAIL_WORKER_BASE` / `MAIL_ADMIN_PASSWORD` |
 | Hotmail007 API    | `hotmail007` | 通过 API 拉取微软邮箱，需配置 `HOTMAIL007_API_KEY`                                          |
-| LuckMail API      | `luckmail`   | 通过接码平台自动获取邮箱，需配置 `LUCKMAIL_API_KEY`                                         |
+| **LuckMail API**  | `luckmail`   | **推荐** 智能购买+预检测活跃邮箱，需配置 `LUCKMAIL_API_KEY`                                 |
 
 **Cloudflare 模式配置：**
 
@@ -126,15 +128,34 @@ HOTMAIL007_MAIL_MODE=imap
 
 `HOTMAIL007_MAIL_MODE` 支持 `graph` (Microsoft Graph API) 和 `imap` (IMAP 协议) 两种收信方式。
 
-**LuckMail 模式配置：**
+**LuckMail 模式配置（推荐）：**
 
 ```env
 EMAIL_MODE=luckmail
 LUCKMAIL_API_URL=https://mails.luckyous.com/api/v1/openapi
 LUCKMAIL_API_KEY=你的API密钥
+
+# 自动购买邮箱并检测活跃度（推荐开启）
+LUCKMAIL_AUTO_BUY=true
+# 邮箱不活跃时的最大重试次数
+LUCKMAIL_MAX_RETRY=3
 ```
 
-LuckMail 模式会自动创建接码订单，每次注册都会分配一个新的 outlook 邮箱用于接收验证码。
+**LuckMail 工作模式说明：**
+
+1. **预检测模式** (`LUCKMAIL_AUTO_BUY=true`)：
+   - 启动时自动创建后台线程
+   - 批量购买邮箱（默认20个）
+   - **并行检测活跃度**（5线程并发）
+   - **只保留活跃邮箱**到队列
+   - **自动禁用不活跃邮箱**
+   - 注册时直接从队列取活跃邮箱使用
+   - 队列不足时自动补充
+
+2. **接码模式** (`LUCKMAIL_AUTO_BUY=false`)：
+   - 每次注册时创建接码订单
+   - 平台自动分配临时邮箱
+   - 适合快速测试
 
 ### 代理配置
 
@@ -270,6 +291,34 @@ uv run python gpt.py --proxy-file proxies.txt --threads 2
 
 ---
 
+## 输出示例
+
+### LuckMail 预检测模式输出
+
+```
+[*] 启动预检测后台线程，维护活跃邮箱池...
+[*] 等待预检测线程准备活跃邮箱...
+==================================================
+[*] [预检测] 活跃邮箱池不足 (0/10)，批量购买 20 个...
+==================================================
+[*] 批量购买 20 个邮箱...
+[*] 成功购买 20 个邮箱，开始并行检测活跃度...
+[*] 检测完成: ✓活跃 3 个, ✗不活跃 17 个(已禁用17个)
+[*] 活跃邮箱列表:
+    ✓ example1@hotmail.com
+    ✓ example2@hotmail.com
+    ✓ example3@hotmail.com
+[*] [预检测] ✓ 已补充 3 个活跃邮箱 | 队列: 11 个
+
+[T1#1] [12:28:05] 开始注册 (代理: http://127.0.0.1:1082)
+[*] 当前 IP 所在地: JP
+[*] ✓ 使用预检测活跃邮箱: example1@hotmail.com
+[*] 活跃邮箱池: 10 个待使用
+...
+```
+
+---
+
 ## 输出文件
 
 | 文件                        | 说明                                                               |
@@ -281,7 +330,8 @@ uv run python gpt.py --proxy-file proxies.txt --threads 2
 
 ## 注意事项
 
-1. 代理必须为非 CN/HK 地区的 IP，否则网络检查会拦截
-2. 多线程数建议不超过代理数量，避免同一代理并发过多被风控
+1. **代理必须为非 CN/HK 地区的 IP**，否则网络检查会拦截
+2. **多线程数建议不超过代理数量**，避免同一代理并发过多被风控
 3. `Ctrl+C` 可随时优雅中断所有线程
 4. `--sleep-min` / `--sleep-max` 控制注册间隔，防止频率过高
+5. **LuckMail 预检测模式**会提前购买并检测邮箱，确保使用的都是活跃邮箱

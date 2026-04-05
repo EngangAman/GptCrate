@@ -114,6 +114,10 @@ ACCOUNTS_FILE=accounts.txt
 # LuckMail 模式配置
 LUCKMAIL_API_URL=https://mails.luckyous.com/api/v1/openapi
 LUCKMAIL_API_KEY={api_key}
+# 自动购买邮箱并检测活跃度（推荐开启）
+LUCKMAIL_AUTO_BUY=true
+# 邮箱不活跃时的最大重试次数
+LUCKMAIL_MAX_RETRY=3
 """
     else:
         env_content += f"""
