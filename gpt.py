@@ -175,6 +175,118 @@ _luckmail_purchased_only = False
 _luckmail_skip_purchased = False
 
 
+class RegistrationStats:
+    """注册统计类，实时跟踪注册情况"""
+    def __init__(self):
+        self._lock = threading.Lock()
+        self.start_time = time.time()
+        self.total_attempts = 0
+        self.success_count = 0
+        self.fail_count = 0
+        self.fail_reasons = {
+            "403_forbidden": 0,
+            "signup_form_error": 0,
+            "password_error": 0,
+            "otp_timeout": 0,
+            "account_create_error": 0,
+            "callback_error": 0,
+            "network_error": 0,
+            "other_error": 0,
+        }
+        self.last_10_results = []  # 最近10次结果用于计算实时成功率
+
+    def add_attempt(self):
+        with self._lock:
+            self.total_attempts += 1
+
+    def add_success(self):
+        with self._lock:
+            self.success_count += 1
+            self.last_10_results.append(True)
+            if len(self.last_10_results) > 10:
+                self.last_10_results.pop(0)
+
+    def add_failure(self, reason: str = "other_error"):
+        with self._lock:
+            self.fail_count += 1
+            if reason in self.fail_reasons:
+                self.fail_reasons[reason] += 1
+            else:
+                self.fail_reasons["other_error"] += 1
+            self.last_10_results.append(False)
+            if len(self.last_10_results) > 10:
+                self.last_10_results.pop(0)
+
+    def get_stats(self) -> dict:
+        with self._lock:
+            elapsed = time.time() - self.start_time
+            total = self.success_count + self.fail_count
+            overall_rate = (self.success_count / total * 100) if total > 0 else 0
+            recent_rate = (sum(self.last_10_results) / len(self.last_10_results) * 100) if self.last_10_results else 0
+            speed = self.success_count / (elapsed / 3600) if elapsed > 0 else 0  # 每小时成功数
+
+            return {
+                "elapsed_time": elapsed,
+                "total_attempts": self.total_attempts,
+                "success_count": self.success_count,
+                "fail_count": self.fail_count,
+                "overall_success_rate": overall_rate,
+                "recent_success_rate": recent_rate,
+                "speed_per_hour": speed,
+                "fail_reasons": self.fail_reasons.copy(),
+            }
+
+    def format_display(self) -> str:
+        stats = self.get_stats()
+        elapsed = stats["elapsed_time"]
+        hours = int(elapsed // 3600)
+        minutes = int((elapsed % 3600) // 60)
+        seconds = int(elapsed % 60)
+
+        lines = [
+            "",
+            "=" * 60,
+            " 📊 注册统计面板",
+            "=" * 60,
+            f" ⏱️  运行时间: {hours:02d}:{minutes:02d}:{seconds:02d}",
+            f" 📈 总尝试数: {stats['total_attempts']}",
+            f" ✅ 成功: {stats['success_count']} | ❌ 失败: {stats['fail_count']}",
+            f" 📊 总体成功率: {stats['overall_success_rate']:.1f}%",
+            f" 📊 最近10次成功率: {stats['recent_success_rate']:.1f}%",
+            f" 🚀 速度: {stats['speed_per_hour']:.1f} 个/小时",
+            "-" * 60,
+            " 📉 失败原因分布:",
+        ]
+
+        for reason, count in stats["fail_reasons"].items():
+            if count > 0:
+                lines.append(f"    • {reason}: {count}")
+
+        lines.append("=" * 60)
+        return "\n".join(lines)
+
+    def format_compact(self) -> str:
+        """紧凑1行格式，适合固定在底部显示"""
+        stats = self.get_stats()
+        elapsed = stats["elapsed_time"]
+        hours = int(elapsed // 3600)
+        minutes = int((elapsed % 3600) // 60)
+        seconds = int(elapsed % 60)
+
+        return (
+            f"\r\033[K[⏱️{hours:02d}:{minutes:02d}:{seconds:02d}] "
+            f"[尝试:{stats['total_attempts']}] "
+            f"[✅{stats['success_count']}|❌{stats['fail_count']}] "
+            f"[总率:{stats['overall_success_rate']:.1f}%] "
+            f"[近10次:{stats['recent_success_rate']:.1f}%] "
+            f"[🚀{stats['speed_per_hour']:.1f}/h]"
+        )
+
+
+# 全局统计对象
+_reg_stats: Optional[RegistrationStats] = None
+
+
 class ActiveEmailQueue:
     """线程安全的活跃邮箱队列，存储预检测的活跃邮箱"""
 
@@ -1632,8 +1744,10 @@ def _generate_password(length: int = 16) -> str:
 
 
 def run(proxy: Optional[str]) -> tuple:
-    """运行注册流程，返回 (token_json, password, email)
-    失败时返回 (None/特殊标记, None, email)
+    """运行注册流程，返回 (token_json, password, email, fail_reason)
+    失败时返回 (None/特殊标记, None, email, fail_reason)
+    fail_reason: 403_forbidden, signup_form_error, password_error, otp_timeout,
+                 account_create_error, callback_error, network_error, other_error
     """
     proxies: Any = None
     if proxy:
@@ -1657,11 +1771,11 @@ def run(proxy: Optional[str]) -> tuple:
                 raise RuntimeError("检查代理哦w - 所在地不支持")
         except Exception as e:
             print(f"[Error] 网络连接检查失败: {e}")
-            return None, None, None
+            return None, None, None, "network_error"
 
     email, dev_token = get_email_and_token(proxies)
     if not email or not dev_token:
-        return None, None, email
+        return None, None, email, "other_error"
     print(f"[*] 成功获取临时邮箱与授权: {email}")
     masked = dev_token[:8] + "..." if dev_token else ""
     print(f"[*] 临时邮箱 JWT: {masked}")
@@ -1715,11 +1829,11 @@ def run(proxy: Optional[str]) -> tuple:
 
         if signup_status == 403:
             print("[Error] 提交注册表单返回 403，中断本次运行，将在10秒后重试...")
-            return "retry_403", None, email
+            return "retry_403", None, email, "403_forbidden"
         if signup_status != 200:
             print("[Error] 提交注册表单失败，跳过本次流程")
             print(signup_resp.text)
-            return None, None, email
+            return None, None, email, "signup_form_error"
 
         password = _generate_password()
         register_body = json.dumps({"password": password, "username": email})
@@ -1740,7 +1854,7 @@ def run(proxy: Optional[str]) -> tuple:
         print(f"[*] 提交注册(密码)状态: {pwd_resp.status_code}")
         if pwd_resp.status_code != 200:
             print(pwd_resp.text)
-            return None, None, email
+            return None, None, email, "password_error"
 
         try:
             register_json = pwd_resp.json()
@@ -2371,6 +2485,14 @@ def _save_result(token_json: str, password: str, proxy_str: Optional[str]) -> No
         delete_temp_email(account_email, proxies=proxies_cleanup)
 
 
+def _print_with_stats_clear(message: str, tag: str = ""):
+    """打印消息（统计行固定在底部，不需要清除）"""
+    if tag:
+        print(f"{tag} {message}")
+    else:
+        print(message)
+
+
 def _worker(
     worker_id: int,
     rotator: ProxyRotator,
@@ -2388,7 +2510,7 @@ def _worker(
 
     while not stop_event.is_set():
         if EMAIL_MODE == "file" and _email_queue is not None and len(_email_queue) == 0:
-            print(f"[T{worker_id}] 邮箱队列已用完，停止线程")
+            _print_with_stats_clear(f"[T{worker_id}] 邮箱队列已用完，停止线程")
             break
 
         if remaining is not None:
@@ -2401,14 +2523,26 @@ def _worker(
         proxy_str = rotator.next() if len(rotator) > 0 else single_proxy
         tag = f"[T{worker_id}#{local_round}]"
 
-        print(f"\n{tag} [{datetime.now().strftime('%H:%M:%S')}] 开始注册 (代理: {proxy_str or '直连'})")
+        _print_with_stats_clear(f"[{datetime.now().strftime('%H:%M:%S')}] 开始注册 (代理: {proxy_str or '直连'})", "")
 
         email_used = None
+        fail_reason = None
         try:
-            token_json, password, email_used = run(proxy_str)
+            # 记录尝试
+            global _reg_stats
+            if _reg_stats:
+                _reg_stats.add_attempt()
+
+            result = run(proxy_str)
+            token_json = result[0] if result else None
+            password = result[1] if result else None
+            email_used = result[2] if len(result) > 2 else None
+            fail_reason = result[3] if len(result) > 3 else "other_error"
 
             if token_json == "retry_403":
-                print(f"{tag} 检测到 403，等待10秒后重试...")
+                _print_with_stats_clear("检测到 403，等待10秒后重试...", tag)
+                if _reg_stats:
+                    _reg_stats.add_failure("403_forbidden")
                 if remaining is not None:
                     with _success_counter_lock:
                         remaining[0] += 1
@@ -2420,18 +2554,24 @@ def _worker(
                 local_success += 1
                 with _success_counter_lock:
                     _success_counter += 1
-                print(f"{tag} 注册成功! (本线程累计: {local_success})")
+                if _reg_stats:
+                    _reg_stats.add_success()
+                _print_with_stats_clear(f"注册成功! (本线程累计: {local_success})", tag)
             else:
-                print(f"{tag} 本次注册失败")
+                _print_with_stats_clear("本次注册失败", tag)
+                if _reg_stats:
+                    _reg_stats.add_failure(fail_reason or "other_error")
                 # 注册失败时禁用邮箱
                 if EMAIL_MODE == "luckmail" and email_used:
                     _disable_email_on_failure(email_used, tag)
                 if EMAIL_MODE == "file" and _email_queue is not None and len(_email_queue) == 0:
-                    print(f"{tag} 邮箱队列已用完，停止线程")
+                    _print_with_stats_clear("邮箱队列已用完，停止线程", tag)
                     break
 
         except Exception as e:
-            print(f"{tag} [Error] 未捕获异常: {e}")
+            _print_with_stats_clear(f"[Error] 未捕获异常: {e}", tag)
+            if _reg_stats:
+                _reg_stats.add_failure("other_error")
             # 异常时也尝试禁用邮箱
             if EMAIL_MODE == "luckmail" and email_used:
                 _disable_email_on_failure(email_used, tag)
@@ -2446,7 +2586,7 @@ def _worker(
 
         if not stop_event.is_set():
             wait_time = random.randint(sleep_min, sleep_max)
-            print(f"{tag} 休息 {wait_time} 秒...")
+            _print_with_stats_clear(f"休息 {wait_time} 秒...", tag)
             for _ in range(wait_time):
                 if stop_event.is_set():
                     break
@@ -2646,10 +2786,43 @@ def main() -> None:
     if args.once and not batch_count:
         batch_count = 1
 
+    # 初始化注册统计
+    global _reg_stats
+    _reg_stats = RegistrationStats()
+
+    # 启动统计展示线程
+    _stats_last_line = ""  # 用于存储最后一行统计
+    stop_event = threading.Event()
+
+    def _stats_display_thread():
+        """定期更新底部统计行"""
+        global _stats_last_line
+        # 先打印一个空行预留统计行位置
+        print("\n" + " " * 80)  # 预留底部行
+        while not stop_event.is_set():
+            time.sleep(1)  # 每秒更新一次
+            if _reg_stats:
+                stats_line = _reg_stats.format_compact()
+                _stats_last_line = stats_line
+                # 使用 ANSI 转义序列：保存光标位置，移动到最后一行，打印统计，恢复光标
+                sys.stdout.write("\033[s")  # 保存光标位置
+                sys.stdout.write("\033[999;1H")  # 移动到最后一行
+                sys.stdout.write(stats_line)
+                sys.stdout.write("\033[u")  # 恢复光标位置
+                sys.stdout.flush()
+
+    # 启动统计展示线程（所有模式都显示）
+    stats_thread = threading.Thread(target=_stats_display_thread, daemon=True)
+    stats_thread.start()
+
     if batch_count and batch_count > 0:
         remaining = [batch_count]
         stop_event = threading.Event()
         actual_threads = min(thread_count, batch_count)
+
+        # 启动统计展示线程
+        stats_thread = threading.Thread(target=_stats_display_thread, daemon=True)
+        stats_thread.start()
 
         if actual_threads <= 1:
             _worker(
@@ -2686,10 +2859,11 @@ def main() -> None:
                     t.join(timeout=5)
 
         print(f"\n[*] 批量注册完毕! 共成功: {_success_counter} / 目标: {batch_count}")
+        # 显示最终统计
+        if _reg_stats:
+            print(_reg_stats.format_display())
 
     else:
-        stop_event = threading.Event()
-
         if thread_count <= 1:
             try:
                 _worker(
