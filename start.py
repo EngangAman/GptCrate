@@ -146,19 +146,23 @@ ACCOUNTS_FILE=accounts.txt
 """
 
     if platform == "luckmail":
-        # 根据模式设置 LUCKMAIL_AUTO_BUY 和 LUCKMAIL_PURCHASED_ONLY
+        # 根据模式设置 LUCKMAIL_AUTO_BUY, LUCKMAIL_PURCHASED_ONLY, LUCKMAIL_SKIP_PURCHASED
         if luckmail_mode == "prefetch":
             auto_buy = "true"
             purchased_only = "false"
+            skip_purchased = "true"  # 预检测模式：跳过已购邮箱，直接购买新邮箱
         elif luckmail_mode == "realtime":
             auto_buy = "true"
             purchased_only = "false"
+            skip_purchased = "false"  # 实时购买模式：可以尝试使用已购邮箱
         elif luckmail_mode == "purchased":
             auto_buy = "true"  # 启用预检测逻辑
             purchased_only = "true"  # 只使用已购邮箱，不购买新邮箱
+            skip_purchased = "false"
         else:  # order 模式
             auto_buy = "false"
             purchased_only = "false"
+            skip_purchased = "false"
 
         env_content += f"""
 # LuckMail 模式配置
@@ -170,6 +174,8 @@ LUCKMAIL_EMAIL_TYPE={email_type}
 LUCKMAIL_AUTO_BUY={auto_buy}
 # 只使用已购邮箱模式（true=只用已购邮箱，用完停止；false=允许购买新邮箱）
 LUCKMAIL_PURCHASED_ONLY={purchased_only}
+# 跳过已购邮箱检查（true=跳过已购邮箱直接购买新邮箱；false=先检查已购邮箱）
+LUCKMAIL_SKIP_PURCHASED={skip_purchased}
 # 邮箱不活跃时的最大重试次数
 LUCKMAIL_MAX_RETRY=3
 """

@@ -73,6 +73,7 @@ LUCKMAIL_API_KEY = os.getenv("LUCKMAIL_API_KEY", "").strip()
 LUCKMAIL_API_URL = os.getenv("LUCKMAIL_API_URL", "https://mails.luckyous.com/api/v1/openapi").rstrip("/")
 LUCKMAIL_AUTO_BUY = os.getenv("LUCKMAIL_AUTO_BUY", "true").strip().lower() == "true"
 LUCKMAIL_PURCHASED_ONLY = os.getenv("LUCKMAIL_PURCHASED_ONLY", "false").strip().lower() == "true"
+LUCKMAIL_SKIP_PURCHASED = os.getenv("LUCKMAIL_SKIP_PURCHASED", "false").strip().lower() == "true"
 LUCKMAIL_EMAIL_TYPE = os.getenv("LUCKMAIL_EMAIL_TYPE", "ms_imap").strip().lower()
 try:
     LUCKMAIL_MAX_RETRY = int(os.getenv("LUCKMAIL_MAX_RETRY", "3").strip())
@@ -170,6 +171,9 @@ _prefetch_lock = threading.Lock()
 # 已购邮箱模式标志（只使用已购邮箱，不购买新邮箱）
 _luckmail_purchased_only = False
 
+# 跳过已购邮箱标志（预检测模式用：只购买新邮箱，不使用已购邮箱）
+_luckmail_skip_purchased = False
+
 
 class ActiveEmailQueue:
     """线程安全的活跃邮箱队列，存储预检测的活跃邮箱"""
@@ -214,19 +218,24 @@ def _prefetch_active_emails(rotator: ProxyRotator, min_pool_size: int = 10, batc
     """后台线程：预检测邮箱池补充
     当活跃邮箱数量低于 min_pool_size 时，优先检查已购邮箱，不足时批量购买
     如果 _luckmail_purchased_only=True，则只使用已购邮箱，不购买新邮箱
+    如果 _luckmail_skip_purchased=True，则跳过已购邮箱检查，直接购买新邮箱
     """
-    global _active_email_queue, _prefetch_no_stock, _luckmail_purchased_only
+    global _active_email_queue, _prefetch_no_stock, _luckmail_purchased_only, _luckmail_skip_purchased
     if _active_email_queue is None:
         _active_email_queue = ActiveEmailQueue()
 
-    # 首先检查已购邮箱
-    print(f"\n[*] [预检测] 首先检查已购邮箱...")
-    proxy = rotator.next() if len(rotator) > 0 else None
-    proxies = {"http": proxy, "https": proxy} if proxy else None
-    purchased_active = luckmail_check_purchased_emails(proxies=proxies, max_workers=5)
-    if purchased_active:
-        _active_email_queue.add_batch(purchased_active)
-        print(f"[*] [预检测] ✓ 已从已购邮箱中添加 {len(purchased_active)} 个活跃邮箱 | 队列: {len(_active_email_queue)} 个")
+    # 检查是否跳过已购邮箱
+    if _luckmail_skip_purchased:
+        print(f"\n[*] [预检测] 跳过已购邮箱检查，直接购买新邮箱...")
+    else:
+        # 首先检查已购邮箱
+        print(f"\n[*] [预检测] 首先检查已购邮箱...")
+        proxy = rotator.next() if len(rotator) > 0 else None
+        proxies = {"http": proxy, "https": proxy} if proxy else None
+        purchased_active = luckmail_check_purchased_emails(proxies=proxies, max_workers=5)
+        if purchased_active:
+            _active_email_queue.add_batch(purchased_active)
+            print(f"[*] [预检测] ✓ 已从已购邮箱中添加 {len(purchased_active)} 个活跃邮箱 | 队列: {len(_active_email_queue)} 个")
 
     # 如果只使用已购邮箱模式，检测完成后退出
     if _luckmail_purchased_only:
@@ -2447,7 +2456,7 @@ def _worker(
 
 
 def main() -> None:
-    global EMAIL_MODE, HOTMAIL007_API_KEY, HOTMAIL007_MAIL_TYPE, HOTMAIL007_MAIL_MODE, _email_queue, LUCKMAIL_API_KEY, LUCKMAIL_AUTO_BUY, LUCKMAIL_PURCHASED_ONLY
+    global EMAIL_MODE, HOTMAIL007_API_KEY, HOTMAIL007_MAIL_TYPE, HOTMAIL007_MAIL_MODE, _email_queue, LUCKMAIL_API_KEY, LUCKMAIL_AUTO_BUY, LUCKMAIL_PURCHASED_ONLY, LUCKMAIL_SKIP_PURCHASED
 
     parser = argparse.ArgumentParser(description="OpenAI 自动注册脚本")
     parser.add_argument(
@@ -2603,11 +2612,14 @@ def main() -> None:
     prefetch_thread = None
     if EMAIL_MODE == "luckmail" and LUCKMAIL_AUTO_BUY:
         # 设置只使用已购邮箱模式标志
-        global _luckmail_purchased_only
+        global _luckmail_purchased_only, _luckmail_skip_purchased
         _luckmail_purchased_only = LUCKMAIL_PURCHASED_ONLY
+        _luckmail_skip_purchased = LUCKMAIL_SKIP_PURCHASED
 
         if _luckmail_purchased_only:
             print("[*] 已购邮箱模式：只使用已购邮箱，不购买新邮箱")
+        elif _luckmail_skip_purchased:
+            print("[*] 预检测模式：跳过已购邮箱，直接购买新邮箱")
         print("[*] 启动预检测后台线程，维护活跃邮箱池...")
         global _active_email_queue
         if _active_email_queue is None:
