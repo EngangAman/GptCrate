@@ -152,6 +152,8 @@ LUCKMAIL_EMAIL_TYPE=ms_imap
 LUCKMAIL_AUTO_BUY=true
 # 已购/预检测邮箱活跃度检测并发数
 LUCKMAIL_CHECK_WORKERS=20
+# 调试 LuckMail 收信轮询（建议排查收不到验证码时临时开启）
+LUCKMAIL_MAIL_DEBUG=false
 # 邮箱不活跃时的最大重试次数
 LUCKMAIL_MAX_RETRY=3
 ```
@@ -371,3 +373,4 @@ uv run python gpt.py --proxy-file proxies.txt --threads 2
 5. **LuckMail 预检测模式**会优先检测已购邮箱活跃度，再批量购买新邮箱补充号池
 6. **已购邮箱模式**当前默认只筛选 `@hotmail.com`，并把检测通过的邮箱立即加入号池
 7. 可用 `LUCKMAIL_CHECK_WORKERS` 调整已购/预检测活跃度检测并发数（默认 `20`）
+8. 排查 LuckMail 收不到验证码时，可临时开启 `LUCKMAIL_MAIL_DEBUG=true` 查看 `token/mails` 摘要、最近邮件主题与 fallback 状态

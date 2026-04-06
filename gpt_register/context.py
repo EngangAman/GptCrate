@@ -50,6 +50,7 @@ LUCKMAIL_API_URL = os.getenv("LUCKMAIL_API_URL", "https://mails.luckyous.com/api
 LUCKMAIL_AUTO_BUY = os.getenv("LUCKMAIL_AUTO_BUY", "true").strip().lower() == "true"
 LUCKMAIL_PURCHASED_ONLY = os.getenv("LUCKMAIL_PURCHASED_ONLY", "false").strip().lower() == "true"
 LUCKMAIL_SKIP_PURCHASED = os.getenv("LUCKMAIL_SKIP_PURCHASED", "false").strip().lower() == "true"
+LUCKMAIL_MAIL_DEBUG = os.getenv("LUCKMAIL_MAIL_DEBUG", "false").strip().lower() == "true"
 LUCKMAIL_EMAIL_TYPE = os.getenv("LUCKMAIL_EMAIL_TYPE", "ms_imap").strip().lower()
 try:
     LUCKMAIL_MAX_RETRY = int(os.getenv("LUCKMAIL_MAX_RETRY", "3").strip())

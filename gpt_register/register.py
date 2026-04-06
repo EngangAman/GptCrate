@@ -338,33 +338,13 @@ def run(proxy: Optional[str]) -> tuple:
                 pwd_json = pwd_login_resp.json()
                 pwd_page = (pwd_json.get("page") or {}).get("type", "")
                 if "otp" in pwd_page or "verify" in str(pwd_json.get("continue_url", "")):
-                    print("[*] 登录触发二次邮箱验证，等待验证码...")
-                    code2 = ""
-                    for otp2_attempt in range(5):
-                        if otp2_attempt > 0:
-                            print(f"\n[*] 二次 OTP 重试 {otp2_attempt}/5，重新发送...")
-                            try:
-                                oauth._post_with_retry(
-                                    s,
-                                    "https://auth.openai.com/api/accounts/email-otp/resend",
-                                    headers={
-                                        "openai-sentinel-token": sentinel2,
-                                        "content-type": "application/json",
-                                    },
-                                    json_body={},
-                                    proxies=proxies,
-                                    timeout=15,
-                                    retries=1,
-                                )
-                                time.sleep(2)
-                            except Exception as e:
-                                print(f"[*] 重发异常: {e}")
-                        code2 = mail.get_oai_code(token=dev_token, email=email, proxies=proxies, seen_ids=processed_mails)
-                        if code2:
-                            break
+                    print("[*] 登录触发二次邮箱验证，尝试使用第一次的验证码...")
+                    # 二次验证码通常和第一次相同，直接复用
+                    code2 = code
                     if not code2:
-                        print("[Error] 二次验证码获取失败")
+                        print("[Error] 第一次验证码为空，无法复用")
                         return None, None, email
+                    print(f"[*] 使用第一次的验证码: {code2}")
                     code2_resp = oauth._post_with_retry(
                         s,
                         "https://auth.openai.com/api/accounts/email-otp/validate",

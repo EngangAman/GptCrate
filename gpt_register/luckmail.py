@@ -386,6 +386,41 @@ def _snapshot_known_message_ids(token: str, proxies: Any = None) -> set[str]:
     return {_mail_message_id(mail_item) for mail_item in mails if _mail_message_id(mail_item)}
 
 
+def _mail_debug_summary(mail_item: dict) -> str:
+    message_id = _mail_message_id(mail_item) or "-"
+    received_at = str(mail_item.get("received_at") or "-")
+    subject = str(mail_item.get("subject") or "").replace("\n", " ").strip()
+    code = _extract_code_from_mail_item(mail_item)
+    return f"id={message_id} time={received_at} code={'yes' if code else 'no'} subject={subject[:80]}"
+
+
+def _print_token_mail_diagnostics(
+    *,
+    email: str,
+    poll_index: int,
+    mails: list[dict],
+    mails_error: str | None,
+    seen_ids: set[str],
+) -> None:
+    if not ctx.LUCKMAIL_MAIL_DEBUG:
+        return
+
+    print(f"\n[Debug][LuckMail] poll={poll_index} email={email} mails={len(mails)} seen={len(seen_ids)}", end="")
+    if mails_error:
+        print(f" error={mails_error}", end="")
+
+    if mails:
+        newest = sorted(
+            mails,
+            key=lambda item: (str(item.get("received_at") or ""), _mail_message_id(item)),
+            reverse=True,
+        )[:3]
+        for index, mail_item in enumerate(newest, start=1):
+            print(f"\n  [Debug][LuckMail] recent#{index} {_mail_debug_summary(mail_item)}", end="")
+    else:
+        print("\n  [Debug][LuckMail] no mails returned", end="")
+
+
 def _select_latest_unseen_code(mails: list[dict], seen_ids: set[str] | None = None) -> tuple[str, str]:
     seen = seen_ids or set()
     ordered = sorted(
@@ -563,8 +598,17 @@ def get_oai_code(email: str, proxies: Any = None, seen_ids: set | None = None) -
         if seen_ids is not None:
             combined_seen_ids.update(str(message_id) for message_id in seen_ids if str(message_id).strip())
         start = time.time()
+        poll_index = 0
         while time.time() - start < 120:
+            poll_index += 1
             mails, mails_error = luckmail_get_token_mails(email_token, proxies=proxies)
+            _print_token_mail_diagnostics(
+                email=email,
+                poll_index=poll_index,
+                mails=mails,
+                mails_error=mails_error,
+                seen_ids=combined_seen_ids,
+            )
             code, message_id = _select_latest_unseen_code(mails, combined_seen_ids)
             if code:
                 if message_id:
@@ -579,6 +623,8 @@ def get_oai_code(email: str, proxies: Any = None, seen_ids: set | None = None) -
                 if fallback_code:
                     print(f" 抓到啦! 验证码: {fallback_code}")
                     return fallback_code
+                if ctx.LUCKMAIL_MAIL_DEBUG:
+                    print(f"\n[Debug][LuckMail] token/code fallback empty for {email}", end="")
             print(".", end="", flush=True)
             time.sleep(3)
         print(" 超时，未收到验证码")
