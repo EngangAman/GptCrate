@@ -39,10 +39,12 @@ class GptMainTests(unittest.TestCase):
             "ACCOUNTS_FILE": ctx.ACCOUNTS_FILE,
             "LUCKMAIL_AUTO_BUY": ctx.LUCKMAIL_AUTO_BUY,
             "LUCKMAIL_PURCHASED_ONLY": ctx.LUCKMAIL_PURCHASED_ONLY,
+            "LUCKMAIL_OWN_ONLY": ctx.LUCKMAIL_OWN_ONLY,
             "LUCKMAIL_CHECK_WORKERS": ctx.LUCKMAIL_CHECK_WORKERS,
             "LUCKMAIL_MAX_RETRY": ctx.LUCKMAIL_MAX_RETRY,
             "_email_queue": ctx._email_queue,
             "_active_email_queue": ctx._active_email_queue,
+            "_luckmail_own_only": ctx._luckmail_own_only,
             "_success_counter": ctx._success_counter,
         }
 

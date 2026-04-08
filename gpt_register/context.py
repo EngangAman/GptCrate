@@ -50,6 +50,7 @@ LUCKMAIL_API_URL = os.getenv("LUCKMAIL_API_URL", "https://mails.luckyous.com/api
 LUCKMAIL_AUTO_BUY = os.getenv("LUCKMAIL_AUTO_BUY", "true").strip().lower() == "true"
 LUCKMAIL_PURCHASED_ONLY = os.getenv("LUCKMAIL_PURCHASED_ONLY", "false").strip().lower() == "true"
 LUCKMAIL_SKIP_PURCHASED = os.getenv("LUCKMAIL_SKIP_PURCHASED", "false").strip().lower() == "true"
+LUCKMAIL_OWN_ONLY = os.getenv("LUCKMAIL_OWN_ONLY", "false").strip().lower() == "true"
 LUCKMAIL_MAIL_DEBUG = os.getenv("LUCKMAIL_MAIL_DEBUG", "false").strip().lower() == "true"
 LUCKMAIL_EMAIL_TYPE = os.getenv("LUCKMAIL_EMAIL_TYPE", "ms_imap").strip().lower()
 try:
@@ -283,6 +284,7 @@ _prefetch_no_stock = False
 _prefetch_lock = threading.Lock()
 _luckmail_purchased_only = False
 _luckmail_skip_purchased = False
+_luckmail_own_only = False
 _reg_stats: Optional[RegistrationStats] = None
 _stats_last_line = ""
 

@@ -150,6 +150,8 @@ LUCKMAIL_API_KEY=你的API密钥
 LUCKMAIL_EMAIL_TYPE=ms_imap
 # 自动购买邮箱并检测活跃度（推荐开启）
 LUCKMAIL_AUTO_BUY=true
+# 只使用自己导入到 LuckMail 的邮箱（true=只读“我的邮箱”，用完即停）
+LUCKMAIL_OWN_ONLY=false
 # 已购/预检测邮箱活跃度检测并发数
 LUCKMAIL_CHECK_WORKERS=20
 # 调试 LuckMail 收信轮询（建议排查收不到验证码时临时开启）
@@ -186,6 +188,12 @@ LUCKMAIL_MAX_RETRY=3
    - 启动时批量检测已购邮箱活跃度，**谁先检测通过谁先入队**
    - 活跃的加入号池，不活跃的自动禁用
    - 若首轮没有筛到可用 Hotmail 活跃邮箱，则直接停止，不再空转线程
+
+5. **我的邮箱模式**（适合已把 Outlook/Hotmail 导入 LuckMail 的用户）：
+   - 只使用用户在 **“我的邮箱”** 中导入的邮箱
+   - 启动时批量读取状态正常的邮箱并加入号池
+   - 注册时直接从号池取邮箱，并通过对应邮箱邮件列表轮询验证码
+   - 用完后直接停止，不购买新邮箱
 
 ### 代理配置
 

@@ -57,6 +57,24 @@ class StartPyTests(unittest.TestCase):
             self.assertIn("LUCKMAIL_SKIP_PURCHASED=false", content)
             self.assertIn("LUCKMAIL_CHECK_WORKERS=20", content)
 
+    def test_generate_env_supports_luckmail_own_mode(self):
+        with tempfile.TemporaryDirectory() as temp_dir, chdir(temp_dir):
+            start.generate_env(
+                platform="luckmail",
+                api_key="secret-key",
+                count=2,
+                threads=1,
+                luckmail_mode="own",
+            )
+
+            with open(".env", "r", encoding="utf-8") as handle:
+                content = handle.read()
+
+            self.assertIn("LUCKMAIL_AUTO_BUY=true", content)
+            self.assertIn("LUCKMAIL_SKIP_PURCHASED=true", content)
+            self.assertIn("LUCKMAIL_PURCHASED_ONLY=false", content)
+            self.assertIn("LUCKMAIL_OWN_ONLY=true", content)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -97,6 +97,10 @@ def _resolve_mode_label() -> str:
     if ctx.EMAIL_MODE == "cf":
         return "Cloudflare Worker (自有域名)"
     if ctx.EMAIL_MODE == "luckmail":
+        if ctx.LUCKMAIL_OWN_ONLY:
+            return "LuckMail API (我的邮箱)"
+        if ctx.LUCKMAIL_PURCHASED_ONLY:
+            return "LuckMail API (已购邮箱)"
         return "LuckMail API (hotmail邮箱)"
     return "Hotmail007 API (微软邮箱)"
 
@@ -219,8 +223,11 @@ def _start_luckmail_prefetch(rotator: ctx.ProxyRotator) -> Optional[threading.Th
 
     ctx._luckmail_purchased_only = ctx.LUCKMAIL_PURCHASED_ONLY
     ctx._luckmail_skip_purchased = ctx.LUCKMAIL_SKIP_PURCHASED
+    ctx._luckmail_own_only = ctx.LUCKMAIL_OWN_ONLY
 
-    if ctx._luckmail_purchased_only:
+    if ctx._luckmail_own_only:
+        print("[*] 我的邮箱模式：只使用自己导入到 LuckMail 的邮箱")
+    elif ctx._luckmail_purchased_only:
         print("[*] 已购邮箱模式：只使用已购邮箱，不购买新邮箱")
     elif ctx._luckmail_skip_purchased:
         print("[*] 预检测模式：跳过已购邮箱，直接购买新邮箱")
@@ -233,7 +240,10 @@ def _start_luckmail_prefetch(rotator: ctx.ProxyRotator) -> Optional[threading.Th
         daemon=True,
     )
     prefetch_thread.start()
-    if ctx._luckmail_purchased_only:
+    if ctx._luckmail_own_only:
+        print("[*] 我的邮箱模式：等待首轮自有邮箱加载完成...")
+        prefetch_thread.join()
+    elif ctx._luckmail_purchased_only:
         print("[*] 已购邮箱模式：等待首轮 Hotmail 检测完成...")
         prefetch_thread.join()
     else:
@@ -554,9 +564,12 @@ def main() -> None:
 
     _print_runtime_summary(rotator, effective_single_proxy, thread_count, batch_count)
     _start_luckmail_prefetch(rotator)
-    if ctx.EMAIL_MODE == "luckmail" and ctx._luckmail_purchased_only:
+    if ctx.EMAIL_MODE == "luckmail" and (ctx._luckmail_purchased_only or ctx._luckmail_own_only):
         if ctx._active_email_queue is None or ctx._active_email_queue.is_empty():
-            print("[*] 已购邮箱模式未筛出可用的 Hotmail 活跃邮箱，停止启动注册线程")
+            if ctx._luckmail_own_only:
+                print("[*] 我的邮箱模式未读取到可用邮箱，停止启动注册线程")
+            else:
+                print("[*] 已购邮箱模式未筛出可用的 Hotmail 活跃邮箱，停止启动注册线程")
             return
 
     if ctx.EMAIL_MODE == "file" and ctx._email_queue is not None and not batch_count:

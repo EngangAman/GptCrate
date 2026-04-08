@@ -70,16 +70,18 @@ def select_luckmail_mode() -> str:
     print("  2. 实时购买模式 - 注册时实时购买并检测")
     print("  3. 接码模式 - 使用平台临时邮箱接收验证码")
     print("  4. 已购邮箱模式 - 使用已购买的邮箱，检测活跃度后使用")
+    print("  5. 我的邮箱模式 - 只使用自己导入到 LuckMail 的邮箱")
     print()
     return _prompt_choice(
-        "请输入选项 (1/2/3/4): ",
+        "请输入选项 (1/2/3/4/5): ",
         {
             "1": "prefetch",
             "2": "realtime",
             "3": "order",
             "4": "purchased",
+            "5": "own",
         },
-        "无效选项，请输入 1、2、3 或 4",
+        "无效选项，请输入 1、2、3、4 或 5",
     )
 
 def select_email_type() -> str:
@@ -169,23 +171,32 @@ ACCOUNTS_FILE=accounts.txt
 """
 
     if platform == "luckmail":
-        # 根据模式设置 LUCKMAIL_AUTO_BUY, LUCKMAIL_PURCHASED_ONLY, LUCKMAIL_SKIP_PURCHASED
+        # 根据模式设置 LUCKMAIL_AUTO_BUY, LUCKMAIL_PURCHASED_ONLY, LUCKMAIL_SKIP_PURCHASED, LUCKMAIL_OWN_ONLY
         if luckmail_mode == "prefetch":
             auto_buy = "true"
             purchased_only = "false"
             skip_purchased = "true"  # 预检测模式：跳过已购邮箱，直接购买新邮箱
+            own_only = "false"
         elif luckmail_mode == "realtime":
             auto_buy = "true"
             purchased_only = "false"
             skip_purchased = "false"  # 实时购买模式：可以尝试使用已购邮箱
+            own_only = "false"
         elif luckmail_mode == "purchased":
             auto_buy = "true"  # 启用预检测逻辑
             purchased_only = "true"  # 只使用已购邮箱，不购买新邮箱
             skip_purchased = "false"
+            own_only = "false"
+        elif luckmail_mode == "own":
+            auto_buy = "true"  # 启用预检测逻辑，读取“我的邮箱”池
+            purchased_only = "false"
+            skip_purchased = "true"
+            own_only = "true"
         else:  # order 模式
             auto_buy = "false"
             purchased_only = "false"
             skip_purchased = "false"
+            own_only = "false"
 
         env_content += f"""
 # LuckMail 模式配置
@@ -199,6 +210,8 @@ LUCKMAIL_AUTO_BUY={auto_buy}
 LUCKMAIL_PURCHASED_ONLY={purchased_only}
 # 跳过已购邮箱检查（true=跳过已购邮箱直接购买新邮箱；false=先检查已购邮箱）
 LUCKMAIL_SKIP_PURCHASED={skip_purchased}
+# 只使用自己导入到 LuckMail 的邮箱（true=只读“我的邮箱”，用完停止）
+LUCKMAIL_OWN_ONLY={own_only}
 # 已购/预检测邮箱活跃度检测并发数
 LUCKMAIL_CHECK_WORKERS=20
 # 邮箱不活跃时的最大重试次数

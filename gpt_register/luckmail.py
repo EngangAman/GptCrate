@@ -60,6 +60,10 @@ def _push_active_email(active_queue: ctx.ActiveEmailQueue | None, email_data: di
         active_queue.add_batch([email_data])
 
 
+def _extract_email_address(email_data: dict) -> str:
+    return str(email_data.get("email") or email_data.get("address") or email_data.get("email_address") or "").strip()
+
+
 def _luckmail_api_request(method: str, endpoint: str, proxies: Any = None, **kwargs) -> dict:
     try:
         headers = {"X-API-Key": ctx.LUCKMAIL_API_KEY, "Content-Type": "application/json"}
@@ -249,6 +253,103 @@ def luckmail_get_all_purchased_emails(proxies: Any = None, user_disabled: int = 
     return all_mails, None
 
 
+def luckmail_get_private_emails(
+    proxies: Any = None,
+    page: int = 1,
+    page_size: int = 50,
+    keyword: str | None = None,
+    status: int | None = 1,
+) -> tuple:
+    params = {"page": page, "page_size": page_size}
+    if keyword:
+        params["keyword"] = keyword
+    if status is not None:
+        params["status"] = status
+    data = _luckmail_api_request("GET", "emails", proxies=proxies, **params)
+    if data.get("code") == 0:
+        payload = data.get("data", {})
+        return payload.get("list", []), None, payload.get("total", 0)
+    return [], data.get("message", "获取我的邮箱失败"), 0
+
+
+def luckmail_get_all_private_emails(
+    proxies: Any = None,
+    keyword: str | None = None,
+    status: int | None = 1,
+) -> tuple:
+    all_mails = []
+    page = 1
+    page_size = 50
+    while True:
+        mails, err, total = luckmail_get_private_emails(
+            proxies=proxies,
+            page=page,
+            page_size=page_size,
+            keyword=keyword,
+            status=status,
+        )
+        if err:
+            return all_mails, err
+        if not mails:
+            break
+        all_mails.extend(mails)
+        if len(all_mails) >= total or len(mails) < page_size:
+            break
+        page += 1
+    return all_mails, None
+
+
+def luckmail_get_private_email_mails(
+    email_id: int,
+    proxies: Any = None,
+    page: int = 1,
+    page_size: int = 50,
+    keyword: str | None = None,
+) -> tuple[list, str | None, int]:
+    params = {"page": page, "page_size": page_size}
+    if keyword:
+        params["keyword"] = keyword
+    data = _luckmail_api_request("GET", f"emails/{email_id}/mails", proxies=proxies, **params)
+    if data.get("code") == 0:
+        payload = data.get("data", {})
+        return payload.get("list", []) or [], None, payload.get("total", 0)
+    return [], data.get("message", "获取邮箱邮件列表失败"), 0
+
+
+def luckmail_get_private_email_mail_detail(email_id: int, message_id: str, proxies: Any = None) -> tuple[dict, str | None]:
+    data = _luckmail_api_request("GET", f"emails/{email_id}/mails/{message_id}", proxies=proxies)
+    if data.get("code") == 0:
+        return data.get("data", {}) or {}, None
+    return {}, data.get("message", "获取邮件详情失败")
+
+
+def luckmail_collect_private_emails(
+    proxies: Any = None,
+    active_queue: ctx.ActiveEmailQueue | None = None,
+) -> list:
+    print("[*] 获取我的邮箱列表...")
+    mails, err = luckmail_get_all_private_emails(proxies=proxies, status=1)
+    if err:
+        print(f"[Error] 获取我的邮箱失败: {err}")
+        return []
+    if not mails:
+        print("[*] 没有可用的我的邮箱")
+        return []
+
+    active_emails = []
+    for mail_item in mails:
+        email = _extract_email_address(mail_item)
+        email_id = mail_item.get("id")
+        if not email or email_id is None:
+            continue
+        normalized = {"email": email, "id": email_id, "source": "private", "type": mail_item.get("type")}
+        active_emails.append(normalized)
+        _push_active_email(active_queue, normalized)
+
+    print(f"[*] 我的邮箱加载完成: ✓ 可用 {len(active_emails)}/{len(mails)} 个")
+    return active_emails
+
+
 def luckmail_check_purchased_emails(
     proxies: Any = None,
     max_workers: int | None = None,
@@ -386,6 +487,11 @@ def _snapshot_known_message_ids(token: str, proxies: Any = None) -> set[str]:
     return {_mail_message_id(mail_item) for mail_item in mails if _mail_message_id(mail_item)}
 
 
+def _snapshot_private_email_message_ids(email_id: int, proxies: Any = None) -> set[str]:
+    mails, _, _ = luckmail_get_private_email_mails(email_id, proxies=proxies, page=1, page_size=100)
+    return {_mail_message_id(mail_item) for mail_item in mails if _mail_message_id(mail_item)}
+
+
 def _mail_debug_summary(mail_item: dict) -> str:
     message_id = _mail_message_id(mail_item) or "-"
     received_at = str(mail_item.get("received_at") or "-")
@@ -444,6 +550,20 @@ def _select_latest_unseen_code(mails: list[dict], seen_ids: set[str] | None = No
 def _prefetch_active_emails(rotator: ctx.ProxyRotator, min_pool_size: int = 10, batch_size: int = 20):
     if ctx._active_email_queue is None:
         ctx._active_email_queue = ctx.ActiveEmailQueue()
+
+    if ctx._luckmail_own_only:
+        print("\n[*] [预检测] 只加载我的邮箱...")
+        proxy = rotator.next() if len(rotator) > 0 else None
+        proxies = ctx.build_proxies(proxy)
+        own_active = luckmail_collect_private_emails(
+            proxies=proxies,
+            active_queue=ctx._active_email_queue,
+        )
+        if own_active:
+            print(f"[*] [预检测] ✓ 已从我的邮箱中添加 {len(own_active)} 个可用邮箱 | 队列: {len(ctx._active_email_queue)} 个")
+        print("[*] [预检测] 我的邮箱模式：不购买新邮箱")
+        print("[*] [预检测] 预检测线程退出")
+        return
 
     if ctx._luckmail_skip_purchased:
         print("\n[*] [预检测] 跳过已购邮箱检查，直接购买新邮箱...")
@@ -513,17 +633,33 @@ def get_email_and_token(proxies: Any = None) -> tuple:
         email_data = ctx._active_email_queue.pop()
         if email_data:
             email = email_data["email"]
-            token = email_data["token"]
-            purchase_id = email_data["id"]
+            source = email_data.get("source", "purchased")
             print(f"[*] ✓ 使用预检测活跃邮箱: {email}")
             print(f"[*] 活跃邮箱池: {len(ctx._active_email_queue)} 个待使用")
+            if source == "private":
+                email_id = email_data["id"]
+                return _store_luckmail_credential(
+                    email,
+                    email_id=email_id,
+                    source=source,
+                    email_data=email_data,
+                    known_message_ids=_snapshot_private_email_message_ids(email_id, proxies=proxies),
+                )
+
+            token = email_data["token"]
+            purchase_id = email_data["id"]
             return _store_luckmail_credential(
                 email,
                 token=token,
                 purchase_id=purchase_id,
+                source=source,
                 email_data=email_data,
                 known_message_ids=_snapshot_known_message_ids(token, proxies=proxies),
             )
+
+    if ctx._luckmail_own_only:
+        print("[*] 我的邮箱已用完，停止注册")
+        return "", ""
 
     if ctx._luckmail_purchased_only:
         print("[*] 已购邮箱已用完，停止注册")
@@ -586,8 +722,59 @@ def get_oai_code(email: str, proxies: Any = None, seen_ids: set | None = None) -
         print(f"[Error] 未找到 {email} 的 LuckMail 凭据")
         return ""
 
+    email_id = creds.get("email_id")
     email_token = creds.get("token")
     order_no = creds.get("order_no")
+    if email_id is not None:
+        print("[*] 使用我的邮箱列表获取验证码...", end="", flush=True)
+        combined_seen_ids = {
+            str(message_id)
+            for message_id in (creds.get("known_message_ids") or set())
+            if str(message_id).strip()
+        }
+        if seen_ids is not None:
+            combined_seen_ids.update(str(message_id) for message_id in seen_ids if str(message_id).strip())
+        start = time.time()
+        while time.time() - start < 120:
+            mails, mails_error, _ = luckmail_get_private_email_mails(email_id, proxies=proxies)
+            code, message_id = _select_latest_unseen_code(mails, combined_seen_ids)
+            if not code:
+                ordered = sorted(
+                    mails,
+                    key=lambda item: (
+                        str(item.get("received_at") or ""),
+                        _mail_message_id(item),
+                    ),
+                    reverse=True,
+                )
+                for mail_item in ordered:
+                    candidate_id = _mail_message_id(mail_item)
+                    if candidate_id and candidate_id in combined_seen_ids:
+                        continue
+                    if not candidate_id:
+                        continue
+                    detail, _ = luckmail_get_private_email_mail_detail(email_id, candidate_id, proxies=proxies)
+                    merged = dict(mail_item)
+                    merged.update(detail)
+                    code = _extract_code_from_mail_item(merged)
+                    if code:
+                        message_id = candidate_id
+                        break
+            if code:
+                if message_id:
+                    combined_seen_ids.add(message_id)
+                    creds.setdefault("known_message_ids", set()).add(message_id)
+                    if seen_ids is not None:
+                        seen_ids.add(message_id)
+                print(f" 抓到啦! 验证码: {code}")
+                return code
+            if mails_error and ctx.LUCKMAIL_MAIL_DEBUG:
+                print(f"\n[Debug][LuckMail] own/email mails error for {email}: {mails_error}", end="")
+            print(".", end="", flush=True)
+            time.sleep(3)
+        print(" 超时，未收到验证码")
+        return ""
+
     if email_token:
         print("[*] 使用已购邮箱Token获取验证码...", end="", flush=True)
         combined_seen_ids = {
