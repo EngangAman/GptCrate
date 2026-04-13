@@ -54,16 +54,17 @@ def print_banner() -> None:
     print()
 
 def select_platform() -> str:
-    print("请选择邮箱平台:")
-    print("  1. LuckMail (推荐 - 自动接码，省心省力)")
-    print("  2. Hotmail007 (需要已有微软邮箱)")
-    print("  3. 本地 Outlook 导入 (使用 邮箱----密码----client_id----刷新令牌)")
-    print("  4. 自建邮箱 / Cloudflare Worker")
+    print("请选择功能:")
+    print("  1. LuckMail 注册")
+    print("  2. Hotmail007 注册")
+    print("  3. 本地 Outlook 导入注册")
+    print("  4. 自建邮箱 / Cloudflare Worker 注册")
+    print("  5. 微软邮箱多别名生成器")
     print()
     return _prompt_choice(
-        "请输入选项 (1/2/3/4): ",
-        {"1": "luckmail", "2": "hotmail007", "3": "local_outlook", "4": "cf"},
-        "无效选项，请输入 1、2、3 或 4",
+        "请输入选项 (1/2/3/4/5): ",
+        {"1": "luckmail", "2": "hotmail007", "3": "local_outlook", "4": "cf", "5": "alias_generator"},
+        "无效选项，请输入 1、2、3、4 或 5",
     )
 
 def select_luckmail_mode() -> str:
@@ -369,6 +370,15 @@ def run_gpt(count: Optional[int], threads: int) -> None:
     
     os.execv(sys.executable, [sys.executable] + cmd)
 
+
+def run_alias_generator() -> None:
+    from gpt_register.alias_generator import run_interactive
+
+    print("\n" + "=" * 50)
+    print("启动微软邮箱多别名生成器...")
+    print("=" * 50 + "\n")
+    raise SystemExit(run_interactive())
+
 def main() -> None:
     print_banner()
 
@@ -383,6 +393,9 @@ def main() -> None:
 
     # 选择平台
     platform = select_platform()
+
+    if platform == "alias_generator":
+        run_alias_generator()
 
     # LuckMail 额外选项
     luckmail_mode = "prefetch"

@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from contextlib import ExitStack, redirect_stdout
 from io import StringIO
+from pathlib import Path
 from unittest import mock
 
 from gpt_register import cli
@@ -49,6 +50,10 @@ class GptMainTests(unittest.TestCase):
             "_active_email_queue": ctx._active_email_queue,
             "_luckmail_own_only": ctx._luckmail_own_only,
             "_success_counter": ctx._success_counter,
+            "_session_output_dir": ctx._session_output_dir,
+            "_session_cpa_dir": ctx._session_cpa_dir,
+            "_session_sub_dir": ctx._session_sub_dir,
+            "_session_accounts_file": ctx._session_accounts_file,
         }
 
     def tearDown(self):
@@ -237,6 +242,29 @@ class GptMainTests(unittest.TestCase):
             finally:
                 ctx.TOKEN_OUTPUT_DIR = original_output_dir
                 ctx.CLI_PROXY_AUTHS_DIR = original_proxy_auths_dir
+
+    def test_prepare_output_session_archives_legacy_outputs_and_creates_run_dirs(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_output_dir = ctx.TOKEN_OUTPUT_DIR
+            try:
+                ctx.TOKEN_OUTPUT_DIR = temp_dir
+                base = Path(temp_dir)
+                (base / "token_old.json").write_text("{}", encoding="utf-8")
+                (base / "sub_old.json").write_text("{}", encoding="utf-8")
+                (base / "accounts.txt").write_text("a----b\n", encoding="utf-8")
+
+                with mock.patch.object(cli.time, "strftime", return_value="20260413_120000"):
+                    cli._prepare_output_session()
+
+                archive_dir = base / "archive" / "legacy_20260413_120000"
+                self.assertTrue((archive_dir / "cpa" / "token_old.json").exists())
+                self.assertTrue((archive_dir / "sub" / "sub_old.json").exists())
+                self.assertTrue((archive_dir / "accounts.txt").exists())
+                self.assertTrue(Path(ctx._session_cpa_dir).exists())
+                self.assertTrue(Path(ctx._session_sub_dir).exists())
+                self.assertTrue(ctx._session_accounts_file.endswith("run_20260413_120000/accounts.txt"))
+            finally:
+                ctx.TOKEN_OUTPUT_DIR = original_output_dir
 
 
 if __name__ == "__main__":
